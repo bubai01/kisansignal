@@ -1,0 +1,1 @@
+{"name":"kisansignal","version":"2.0.0","private":true,"type":"module","description":"KisanSignal farmer advisory PWA with PostgreSQL backend","engines":{"node":">=20"},"scripts":{"start":"node server/server.js","test":"node test/smoke.mjs","migrate:sqlite":"node scripts/migrate-sqlite.mjs"},"dependencies":{"express":"^5.1.0","pg":"^8.16.3"}}

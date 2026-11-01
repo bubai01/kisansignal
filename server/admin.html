@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>KisanSignal admin</title>
+<style>
+:root{--bg:#F3FAF6;--card:#fff;--ink:#10281F;--mute:#4A665A;--line:rgba(16,90,60,.16);--leaf:#0B8A57;--bad:#B4502B}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0}
+h1{font-size:18px;margin:0}h1 b{color:var(--leaf)}main{max-width:1100px;margin:0 auto;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.k{font-size:28px;font-weight:700}.l{color:var(--mute);font-size:13px}h2{font-size:16px;margin:26px 0 10px}
+button,input{font:inherit;border-radius:10px;border:1px solid var(--line);padding:8px 12px;background:#fff;color:var(--ink)}button{cursor:pointer;font-weight:600}button.p{background:var(--leaf);color:#fff;border-color:var(--leaf)}button.d{color:var(--bad)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}th{color:var(--mute);font-weight:600}.sc{overflow-x:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.bar{height:8px;border-radius:6px;background:var(--leaf);min-width:2px}.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.bl{display:grid;grid-template-columns:110px 1fr 36px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
+#login{max-width:380px;margin:12vh auto;text-align:center}#login input{width:100%;margin:12px 0}.err{color:var(--bad);min-height:20px}pre{background:#0E1E1A;color:#BFF5DC;padding:12px;border-radius:12px;overflow:auto;font-size:13px}
+</style></head><body>
+<div id="login" class="card"><h1>Kisan<b>Signal</b> admin</h1><input id="tok" type="password" placeholder="Admin token" autocomplete="current-password"><button class="p" id="go" style="width:100%">Sign in</button><p class="err" id="le"></p></div>
+<div id="app" hidden><header><h1>Kisan<b>Signal</b> admin</h1><div class="row"><button id="rf">Refresh</button><button id="out">Sign out</button></div></header><main>
+<div class="grid" id="kp"></div>
+<h2>Who uses it</h2><div class="two"><div class="card"><div class="l">Top regions</div><div id="b1"></div></div><div class="card"><div class="l">Crops</div><div id="b2"></div></div><div class="card"><div class="l">Sign-ups, last 14 days</div><div id="b3"></div></div><div class="card"><div class="l">Languages</div><div id="b4"></div></div></div>
+<h2>Alerts</h2><div class="card"><p id="cfg" class="l"></p><div class="row"><input id="fr" type="number" placeholder="Pretend rain (mm/day)" style="width:190px"><button id="dry" class="p">Dry run</button><button id="live" class="d">Send for real</button></div><pre id="ar" hidden></pre></div>
+<div class="sc" style="margin-top:12px"><table id="at"></table></div>
+<h2>Farmers</h2><div class="row" style="margin-bottom:10px"><input id="q" placeholder="Search name, phone, region"><button id="sr">Search</button><button id="ex">Export CSV (contains phone numbers)</button></div><div class="sc"><table id="ut"></table></div>
+</main></div>
+<script>
+var T=sessionStorage.getItem('ksa')||'',$=function(i){return document.getElementById(i)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function a(m,p,b){return fetch(p,{method:m,headers:Object.assign({authorization:'Bearer '+T},b?{'content-type':'application/json'}:{}),body:b?JSON.stringify(b):void 0})}
+function dt(x){return x?new Date(x).toLocaleString():''}
+function bars(id,rows,k){var m=Math.max.apply(null,rows.map(function(r){return r.n}).concat(1));$(id).innerHTML=rows.length?rows.map(function(r){return '<div class="bl"><span>'+esc(r[k]||'-')+'</span><div class="bar" style="width:'+Math.round(r.n/m*100)+'%"></div><b>'+r.n+'</b></div>'}).join(''):'<p class="l">No data yet</p>'}
+async function load(){var r=await a('GET','/api/admin/stats');if(r.status==401){out();$('le').textContent='Wrong token.';return}var s=await r.json();$('login').hidden=true;$('app').hidden=false;
+var k=[['Farmers',s.total],['New today',s.new24h],['New 7 days',s.new7d],['Active today',s.active24h],['Active 7 days',s.active7d],['Alerts on',s.alertsOn],['Visits 7 days',s.visits7d],['Advisor questions today',s.advisor24h]];
+$('kp').innerHTML=k.map(function(x){return '<div class="card"><div class="k">'+x[1]+'</div><div class="l">'+x[0]+'</div></div>'}).join('');
+bars('b1',s.regions,'k');bars('b2',s.crops,'k');bars('b3',s.signups,'k');bars('b4',s.langs,'k');
+$('cfg').textContent='SMS provider: '+s.config.sms+' | Advisor: '+(s.config.advisor?'on':'off')+' | Checks every '+s.config.everyMin+' min | Alert at '+s.config.rainMm+' mm/day, severe at '+s.config.severeMm+' mm/day | Last 7 days: '+(s.alerts7d.map(function(x){return x.k+' '+x.n}).join(', ')||'none');
+var al=(await (await a('GET','/api/admin/alerts')).json()).alerts;$('at').innerHTML='<tr><th>Time</th><th>Farmer</th><th>Region</th><th>Level</th><th>Rain</th><th>Via</th><th>Status</th></tr>'+(al.map(function(x){return '<tr><td>'+dt(x.ts)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.region)+'</td><td>'+esc(x.level)+'</td><td>'+Math.round(x.rain)+' mm</td><td>'+esc(x.channel)+'</td><td title="'+esc(x.detail)+'">'+esc(x.status)+'</td></tr>'}).join('')||'<tr><td colspan="7" class="l">No alerts yet</td></tr>');users()}
+async function users(){var u=await (await a('GET','/api/admin/users?q='+encodeURIComponent($('q').value))).json();$('ut').innerHTML='<tr><th>Name</th><th>Phone</th><th>Region</th><th>Crop</th><th>Alerts</th><th>Joined</th><th>Last seen</th><th></th></tr>'+(u.users.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.phone)+'</td><td>'+esc(x.region)+'</td><td>'+esc(x.crop)+'</td><td>'+(x.alerts?esc(x.channel):'off')+'</td><td>'+dt(x.created)+'</td><td>'+dt(x.last_seen)+'</td><td><button class="d" data-d="'+x.id+'">Delete</button></td></tr>'}).join('')||'<tr><td colspan="8" class="l">No farmers found</td></tr>')}
+function out(){T='';sessionStorage.removeItem('ksa');$('app').hidden=true;$('login').hidden=false}
+$('go').onclick=function(){T=$('tok').value.trim();sessionStorage.setItem('ksa',T);$('le').textContent='';load()};$('tok').onkeydown=function(e){if(e.key=='Enter')$('go').click()};
+$('rf').onclick=load;$('out').onclick=out;$('sr').onclick=users;$('q').onkeydown=function(e){if(e.key=='Enter')users()};
+$('ut').onclick=async function(e){var id=e.target.getAttribute('data-d');if(id&&confirm('Delete this farmer and all their data?')){await a('DELETE','/api/admin/users/'+id);load()}};
+async function run(dry){if(!dry&&!confirm('This sends real messages to every farmer in range. Continue?'))return;var r=await a('POST','/api/admin/run-alerts',{dry:dry,fakeRain:$('fr').value});$('ar').hidden=false;$('ar').textContent=JSON.stringify(await r.json(),null,2);load()}
+$('dry').onclick=function(){run(true)};$('live').onclick=function(){run(false)};
+$('ex').onclick=async function(){var r=await a('GET','/api/admin/export.csv'),b=await r.blob(),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='kisansignal-users.csv';l.click()};
+if(T)load();
+</script></body></html>

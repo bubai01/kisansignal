@@ -1,0 +1,24 @@
+# Run: copy .env.example to .env, set DATABASE_URL, then docker compose up -d --build.
+# HTTPS is automatic when DOMAIN points at this server (ports 80 and 443 open).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "3000"
+      TRUST_PROXY: "1"
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [app]
+volumes:
+  caddy-data:
+  caddy-config:
